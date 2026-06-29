@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data Agent Studio — Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* light theme — white page, each diagram block gets its own colour */
+    --bg:#eef3f6; --surface:#ffffff; --surface-2:#f1f5f8;
+    --teal:#0d9488; --teal-bright:#0f766e; --teal-200:#0f766e; --magenta:#c2185b; --amber:#b45309;
+    --text:#15323a; --muted:#52707a; --faint:#8aa0a6; --border:#d8e2e7;
+    --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+  a{color:var(--teal-bright);text-decoration:none;font-weight:600}
+
+  header{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:rgba(255,255,255,.86);border-bottom:1px solid var(--border)}
+  .bar{max-width:1280px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .mark{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--teal),#0b5e57);box-shadow:0 2px 8px rgba(13,148,136,.3)}
+  .title b{font-size:16px;font-weight:800;letter-spacing:.2px;color:var(--text)}
+  .title small{display:block;color:var(--teal);font-size:11.5px;margin-top:1px;font-weight:600}
+  .spacer{flex:1}
+  .ghost{font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 11px;border-radius:8px;background:var(--surface)}
+
+  .tabs{max-width:1280px;margin:0 auto;padding:0 18px;display:flex;gap:6px;flex-wrap:wrap}
+  .tab{appearance:none;background:transparent;border:1px solid transparent;color:var(--muted);font-family:inherit;font-size:13px;font-weight:600;padding:10px 14px;border-radius:10px 10px 0 0;cursor:pointer;display:flex;align-items:center;gap:8px}
+  .tab:hover{color:var(--text);background:rgba(13,148,136,.07)}
+  .tab.active{color:var(--teal-bright);background:var(--surface);border-color:var(--border);border-bottom-color:var(--surface)}
+  .tab .n{font-family:var(--mono);font-size:10.5px;background:rgba(13,148,136,.14);color:var(--teal-bright);padding:1px 6px;border-radius:5px}
+
+  main{max-width:1280px;margin:0 auto;padding:0 18px 60px}
+  .view{display:none;background:var(--surface);border:1px solid var(--border);border-radius:0 14px 14px 14px;padding:22px;box-shadow:0 1px 3px rgba(20,50,58,.06)}
+  .view.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}}
+  .view h2{margin:0 0 6px;font-size:20px;color:var(--text)}
+  .view h2 code{font-family:var(--mono);font-size:16px;color:var(--teal-bright)}
+  .view .desc{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 16px;max-width:920px}
+  .view .desc b{color:var(--text)}
+  .view .desc code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);color:var(--teal-bright);padding:1px 6px;border-radius:5px;border:1px solid var(--border)}
+
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .toolbar .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:700}
+  .zbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:grid;place-items:center}
+  .zbtn:hover{border-color:var(--teal);color:var(--teal-bright);background:var(--surface-2)}
+
+  /* light canvas with a subtle graph-paper dot grid so the coloured blocks pop */
+  .canvas{border:1px solid var(--border);border-radius:12px;background:radial-gradient(#dde7ec 1px,transparent 1px) 0 0/22px 22px,#fcfdfe;overflow:auto;padding:18px;min-height:300px}
+  .canvas .mermaid,.canvas .autosvg{transform-origin:top left;transition:transform .12s ease}
+  .canvas svg{max-width:none!important;height:auto}
+  .autosvg{display:block;max-width:none;background:#fff;border-radius:8px;padding:10px;border:1px solid var(--border)}
+  .autonote{color:var(--muted);font-size:13px;line-height:1.6;padding:18px}
+  .autonote code{font-family:var(--mono);color:var(--teal-bright)}
+
+  .legend{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-family:var(--mono);font-size:11.5px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:8px}
+  .chip b{color:var(--teal-bright);font-weight:700}
+  .chip.m b{color:var(--magenta)}
+  .chip.a b{color:var(--amber)}
+
+  footer{max-width:1280px;margin:0 auto;padding:24px 22px 50px;color:var(--faint);font-size:12.5px;line-height:1.7}
+  footer code{font-family:var(--mono);color:var(--teal-bright)}
+  footer b{color:var(--muted)}
+
+  #loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;transition:opacity .3s}
+  #loading.done{opacity:0;pointer-events:none}
+  .spinner{width:42px;height:42px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--teal);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hint{font-size:12px;color:var(--faint);margin-top:14px}
+</style>
+</head>
+<body>
+
+<div id="loading"><div style="text-align:center"><div class="spinner" style="margin:0 auto"></div><div class="hint">Rendering diagrams…</div></div></div>
+
+<header>
+  <div class="bar">
+    <div class="mark">DA</div>
+    <div class="title"><b>Data Agent Studio</b><small>Architecture &amp; code flow · KDD Cup 2026 · Team UIT</small></div>
+    <div class="spacer"></div>
+    <div class="ghost">Diagrams: Mermaid.js · click a tab to switch view</div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-v="overview"><span class="n">1</span> System overview</button>
+    <button class="tab" data-v="liverun"><span class="n">2</span> Live run (sequence)</button>
+    <button class="tab" data-v="reactloop"><span class="n">3</span> ReAct engine loop</button>
+    <button class="tab" data-v="frontend"><span class="n">4</span> Frontend data-flow</button>
+    <button class="tab" data-v="tools"><span class="n">5</span> Tools &amp; providers</button>
+    <button class="tab" data-v="contract"><span class="n">6</span> Event contract &amp; modes</button>
+    <button class="tab" data-v="fegraph"><span class="n">7</span> Frontend graph · auto</button>
+    <button class="tab" data-v="begraph"><span class="n">8</span> Backend call-graph · auto</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- 1 -->
+  <section class="view active" data-v="overview">
+    <h2>System overview — how the pieces talk</h2>
+    <p class="desc">Three layers behind stable interfaces. The <b>React frontend</b> renders a chatbot; the <b>FastAPI gateway</b> (<code>server/app.py</code>) wraps the <b>Phase-1 ReAct engine</b> (<code>data_agent_baseline/</code>) and streams its real trace over SSE. Tools and LLM endpoints are plug-and-play.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+flowchart TB
+  subgraph UI["Frontend — React/Vite (frontend/)"]
+    direction TB
+    App["App.jsx"] --> WS["Workspace.jsx"]
+    WS --> CP["ChatPanel.jsx"]
+    WS --> RP["ResultsPanel.jsx"]
+    WS --> FP["FilesPanel and PlanPanel"]
+    WS --> HM["useAgentRun (demo/mock)"]
+    WS --> HL["useAgentRunLive (live)"]
+  end
+  subgraph GW["Gateway — FastAPI (server/app.py)"]
+    direction TB
+    RUN["POST /api/run (SSE)"]
+    DEC["POST /api/decide"]
+    CHAT["POST /api/chat"]
+    META["GET /api/tasks and /api/health"]
+  end
+  subgraph ENG["Agent Engine (src/data_agent_baseline/)"]
+    direction TB
+    REACT["ReActAgent.run() — react.py"]
+    REG["ToolRegistry.execute() — registry.py"]
+    MODEL["ModelAdapter.complete() — model.py"]
+  end
+  subgraph EXT["Pluggable providers"]
+    direction TB
+    LLM["Azure / OpenAI-compatible LLM"]
+    DATA["CSV · JSON · SQLite (DuckDB / pandas)"]
+  end
+  HL -->|"lib/api.js: runStream, decide, chatLLM"| GW
+  RUN --> REACT
+  DEC -.->|"decision queue"| REACT
+  CHAT --> MODEL
+  REACT --> MODEL
+  REACT --> REG
+  MODEL --> LLM
+  REG --> DATA
+  REACT -->|"AgentEvent over SSE"| HL
+  classDef ui fill:#e8f1fd,stroke:#2563eb,stroke-width:1.4px,color:#11315f;
+  classDef gw fill:#f1e9fd,stroke:#7c3aed,stroke-width:1.4px,color:#3b1d6e;
+  classDef eng fill:#e0f3f1,stroke:#0d9488,stroke-width:1.4px,color:#0f3f3a;
+  classDef ext fill:#fdf2dc,stroke:#d97706,stroke-width:1.4px,color:#6b3d05;
+  class App,WS,CP,RP,FP,HM,HL ui;
+  class RUN,DEC,CHAT,META gw;
+  class REACT,REG,MODEL eng;
+  class LLM,DATA ext;
+  style UI fill:#f3f8ff,stroke:#2563eb,color:#11315f;
+  style GW fill:#f9f4ff,stroke:#7c3aed,color:#3b1d6e;
+  style ENG fill:#f0faf8,stroke:#0d9488,color:#0f3f3a;
+  style EXT fill:#fffaf0,stroke:#d97706,color:#6b3d05;
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>App.jsx</b> routes SessionList / Workspace</span>
+      <span class="chip"><b>Workspace.jsx</b> picks mock vs live agent</span>
+      <span class="chip"><b>server/app.py</b> SSE gateway</span>
+      <span class="chip"><b>react.py</b> ReActAgent.run()</span>
+      <span class="chip m"><b>plug-and-play</b> tools + endpoints</span>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="view" data-v="liverun">
+    <h2>Live run — a question, end to end</h2>
+    <p class="desc">What happens when the user asks a real data question in <b>Live</b> mode. The engine runs in a worker thread; events stream back over SSE. In <b>Co-pilot</b> the engine pauses at <code>on_propose()</code> and waits for a decision posted to <code>/api/decide</code>.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant UI as useAgentRunLive
+  participant API as FastAPI /api/run
+  participant W as worker
+  participant A as ReActAgent.run()
+  participant M as ModelAdapter
+  participant L as LLM (Azure)
+  participant T as ToolRegistry
+  U->>UI: type a data question
+  UI->>UI: classifyIntent() = question
+  UI->>API: POST /api/run {task, creds, mode}
+  API->>W: spawn worker(on_step, on_propose)
+  API-->>UI: SSE RUN_STARTED {run_id}
+  loop each step
+    A->>M: model.complete(messages)
+    M->>L: chat.completions
+    L-->>M: thought + action + action_input
+    M-->>A: parse_model_step()
+    alt Co-pilot mode
+      A-->>UI: AGENT_THOUGHT + AWAITING_USER
+      U->>API: POST /api/decide (approve/edit/reject)
+      API-->>A: decision via queue
+    end
+    A->>T: tools.execute(action, input)
+    T-->>A: observation
+    A-->>UI: TOOL_EXECUTION_START then _SUCCESS
+  end
+  A-->>UI: RUN_FINISHED {answer}
+  UI->>U: render trace + answer table + chart
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>classifyIntent()</b> lib/chat.js</span>
+      <span class="chip"><b>runStream()</b> lib/api.js</span>
+      <span class="chip"><b>on_step</b> streams every StepRecord</span>
+      <span class="chip m"><b>on_propose</b> co-pilot gate</span>
+      <span class="chip a"><b>SSE</b> events · /api/decide for control</span>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="view" data-v="reactloop">
+    <h2>ReAct engine loop — inside <code>ReActAgent.run()</code></h2>
+    <p class="desc">The tuned reasoning loop in <code>agents/react.py</code>. Each iteration: build messages → call the model → parse → guard checks → (co-pilot gate) → execute tool → stream + diagnose → repeat until <code>answer</code>. Guards keep the agent from looping or submitting malformed answers.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+flowchart TB
+  S([run]) --> B["_build_messages() · build_system_prompt / build_task_prompt"]
+  B --> C["model.complete()"]
+  C --> P["parse_model_step()"]
+  P --> G{"step 1: _check_decomposition ok?"}
+  G -->|"missing fields"| C
+  G -->|"ok"| PRE{"action is answer? _answer_preflight_hint"}
+  PRE -->|"reshape needed"| C
+  PRE -->|"fine"| PROP{"_on_propose — co-pilot gate"}
+  PROP -->|"reject"| C
+  PROP -->|"cancel"| D([RUN_FINISHED])
+  PROP -->|"approve / edit"| EX["tools.execute(action, eff_input)"]
+  EX --> EM["_emit to on_step (stream SSE)"]
+  EM --> CK["_check_loop · _check_stagnation · _check_exploration · _classify_tool_error"]
+  CK --> TERM{"is_terminal (answer)?"}
+  TERM -->|"no"| C
+  TERM -->|"yes"| D
+  C -.->|"max_steps reached"| F["_forced_final_answer()"]
+  F --> D
+  classDef step fill:#e8f1fd,stroke:#2563eb,stroke-width:1.4px,color:#11315f;
+  classDef dec fill:#fdf2dc,stroke:#d97706,stroke-width:1.4px,color:#6b3d05;
+  classDef gate fill:#fde8f1,stroke:#db2777,stroke-width:1.4px,color:#6b1840;
+  classDef term fill:#e6f6ea,stroke:#16a34a,stroke-width:1.4px,color:#14431f;
+  classDef warn fill:#fdeaea,stroke:#dc2626,stroke-width:1.4px,color:#7f1d1d;
+  class S,D term;
+  class B,C,P,EX,EM,CK step;
+  class G,PRE,TERM dec;
+  class PROP gate;
+  class F warn;
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>parse_model_step()</b> JSON → thought/action</span>
+      <span class="chip"><b>_check_decomposition()</b> step-1 gate</span>
+      <span class="chip"><b>_answer_preflight_hint()</b> shape check</span>
+      <span class="chip m"><b>_on_propose()</b> human-in-the-loop</span>
+      <span class="chip"><b>_check_loop / _stagnation</b> recovery</span>
+      <span class="chip a"><b>_forced_final_answer()</b> last resort</span>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="view" data-v="frontend">
+    <h2>Frontend data-flow — events become UI</h2>
+    <p class="desc">The hook <code>useAgentRunLive.send()</code> is the only place that talks to the backend. Greetings are answered by the LLM; questions stream a run. Incoming <code>AgentEvent</code>s map to <code>feed</code> / <code>results</code> / <code>plan</code>, which the panels render. Mock and live hooks share the exact same shape, so components never change.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+flowchart LR
+  SEND["useAgentRunLive.send(text)"] --> INT{"classifyIntent (lib/chat.js)"}
+  INT -->|"small talk"| CHAT["chatLLM → POST /api/chat"]
+  CHAT --> MSG["feed: Assistant bubble (RichText)"]
+  INT -->|"data question"| STR["runStream → POST /api/run (SSE)"]
+  STR --> MAP["map AgentEvent to feed / results / plan"]
+  MAP --> TR["TraceTimeline: Thought, Action, Observation"]
+  MAP --> PL["PlanPanel: live decomposition"]
+  MAP --> ACT["AgentActivity: tool-dock animation"]
+  MAP --> ANS["ResultsPanel: AnswerTable / BarChart"]
+  CC["CoPilotCard"] -->|"approve / edit / reject / guide / cancel"| DEC["decide → POST /api/decide"]
+  SET["SettingsModal"] -->|"loadSettings / saveSettings"| LS[("localStorage")]
+  classDef entry fill:#eef2f5,stroke:#64748b,stroke-width:1.4px,color:#1f2c36;
+  classDef dec fill:#fdf2dc,stroke:#d97706,stroke-width:1.4px,color:#6b3d05;
+  classDef chat fill:#f1e9fd,stroke:#7c3aed,stroke-width:1.4px,color:#3b1d6e;
+  classDef run fill:#e0f3f1,stroke:#0d9488,stroke-width:1.4px,color:#0f3f3a;
+  classDef out fill:#e8f1fd,stroke:#2563eb,stroke-width:1.4px,color:#11315f;
+  classDef cop fill:#fde8f1,stroke:#db2777,stroke-width:1.4px,color:#6b1840;
+  classDef store fill:#e3f5fb,stroke:#0891b2,stroke-width:1.4px,color:#0b3c49;
+  class SEND entry;
+  class INT dec;
+  class CHAT,MSG chat;
+  class STR,MAP run;
+  class TR,PL,ACT,ANS out;
+  class CC,DEC cop;
+  class SET,LS store;
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>Workspace.jsx</b> runs both hooks, picks one</span>
+      <span class="chip"><b>eventContract.js</b> EVENT / COMMAND / RUN_STATE</span>
+      <span class="chip"><b>TraceTimeline → CodeBlock</b> renders SQL/Python</span>
+      <span class="chip m"><b>CoPilotCard</b> step approval</span>
+      <span class="chip a"><b>localStorage</b> persists API key/endpoint</span>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="view" data-v="tools">
+    <h2>Tools &amp; providers — plug-and-play</h2>
+    <p class="desc"><code>ToolRegistry.execute(action, input)</code> dispatches to a handler; each handler delegates to a focused module. New tools are added via the UI (<code>ToolsModal</code>) or a YAML entry — no core change. LLM and data endpoints sit behind adapters so they swap freely.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+flowchart LR
+  REG["ToolRegistry.execute()"]
+  REG --> LS["_list_context, _profile_context → filesystem.py"]
+  REG --> PC["_profile_csv, _profile_json, _read_doc → filesystem.py"]
+  REG --> US["_execute_universal_sql → duckdb_exec.py"]
+  REG --> CS["_execute_context_sql, inspect schema → sqlite.py"]
+  REG --> PY["_execute_python → python_exec.py"]
+  REG --> KG["_build_knowledge_graph → knowledge_graph.py"]
+  REG --> XI["_extract_info → filesystem.py"]
+  REG --> AN["_answer (terminal) → AnswerTable"]
+  subgraph PROV["Model providers (model.py)"]
+    OAI["OpenAIModelAdapter"]
+    AZ["AzureOpenAIModelAdapter"]
+  end
+  BUILD["build_model_adapter() (runner.py)"] -->|"api_version set"| AZ
+  BUILD -->|"otherwise"| OAI
+  classDef reg fill:#e0f3f1,stroke:#0d9488,stroke-width:1.6px,color:#0f3f3a;
+  classDef handler fill:#e8f1fd,stroke:#2563eb,stroke-width:1.4px,color:#11315f;
+  classDef term fill:#e6f6ea,stroke:#16a34a,stroke-width:1.4px,color:#14431f;
+  classDef prov fill:#fdf2dc,stroke:#d97706,stroke-width:1.4px,color:#6b3d05;
+  classDef build fill:#f1e9fd,stroke:#7c3aed,stroke-width:1.4px,color:#3b1d6e;
+  class REG reg;
+  class LS,PC,US,CS,PY,KG,XI handler;
+  class AN term;
+  class OAI,AZ prov;
+  class BUILD build;
+  style PROV fill:#fffaf0,stroke:#d97706,color:#6b3d05;
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>create_default_tool_registry()</b> registry.py</span>
+      <span class="chip"><b>ToolsModal.jsx</b> register tools (UI)</span>
+      <span class="chip"><b>build_model_adapter()</b> chooses Azure/OpenAI</span>
+      <span class="chip a"><b>_answer</b> only valid terminal action</span>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="view" data-v="contract">
+    <h2>Event contract &amp; the two modes</h2>
+    <p class="desc">One normalized stream is the single source of truth between backend and UI (<code>lib/eventContract.js</code>). The same events render the trace in both modes — the only difference is whether the engine pauses for you.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas"><div class="mermaid">
+flowchart TB
+  subgraph EV["AgentEvent types (core to UI)"]
+    direction LR
+    E1["RUN_STARTED"] --> E2["AGENT_THOUGHT"] --> E3["TOOL_EXECUTION_START"] --> E4["TOOL_EXECUTION_SUCCESS / _ERROR"] --> E5["RUN_FINISHED"]
+    E2 -.-> E6["AWAITING_USER (co-pilot)"]
+  end
+  subgraph MD["Two interaction modes"]
+    direction LR
+    AUTO["Autopilot: on_propose is None, runs end to end"]
+    COP["Co-pilot: on_propose blocks, emits AWAITING_USER"]
+  end
+  COP -->|"COMMAND: approve / edit / reject / guide / cancel"| DEC2["POST /api/decide"]
+  DEC2 -.->|"unblocks worker"| COP
+  classDef ev fill:#e8f1fd,stroke:#2563eb,stroke-width:1.4px,color:#11315f;
+  classDef cop fill:#fde8f1,stroke:#db2777,stroke-width:1.4px,color:#6b1840;
+  classDef auto fill:#e0f3f1,stroke:#0d9488,stroke-width:1.4px,color:#0f3f3a;
+  classDef route fill:#f1e9fd,stroke:#7c3aed,stroke-width:1.4px,color:#3b1d6e;
+  class E1,E2,E3,E4,E5 ev;
+  class E6,COP cop;
+  class AUTO auto;
+  class DEC2 route;
+  style EV fill:#f3f8ff,stroke:#2563eb,color:#11315f;
+  style MD fill:#f0faf8,stroke:#0d9488,color:#0f3f3a;
+    </div></div>
+    <div class="legend">
+      <span class="chip"><b>EVENT.*</b> core → UI</span>
+      <span class="chip m"><b>COMMAND.*</b> UI → controller</span>
+      <span class="chip"><b>RUN_STATE.*</b> state machine</span>
+      <span class="chip a"><b>STEP_KIND.*</b> thought / action / observe / answer</span>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="view" data-v="fegraph">
+    <h2>Frontend module graph — <span style="color:var(--teal-bright)">auto-generated</span></h2>
+    <p class="desc">Built from the <b>real imports</b> of <code>frontend/src</code> by <b>madge</b> in CI on every push. This always matches the current code — add a component and it shows up here automatically. No hand-editing.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas">
+      <img class="autosvg" src="frontend.svg" alt="frontend dependency graph" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+      <div class="autonote" style="display:none">⚙ This graph is generated in CI (<code>madge</code>). Open the deployed <b>GitHub Pages</b> site to see it, or run the workflow in <code>.github/workflows/architecture.yml</code>.</div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="view" data-v="begraph">
+    <h2>Backend call-graph — <span style="color:var(--teal-bright)">auto-generated</span></h2>
+    <p class="desc">A <b>function call-graph</b> of the live engine path (<code>server/app.py</code>, <code>react.py</code>, <code>runner.py</code>, <code>registry.py</code>) produced by <b>code2flow</b> in CI. Shows which function calls which — regenerated from source on every push.</p>
+    <div class="toolbar"><span class="lbl">Zoom</span><button class="zbtn" data-z="-">−</button><button class="zbtn" data-z="+">+</button><button class="zbtn" data-z="0">⟳</button></div>
+    <div class="canvas">
+      <img class="autosvg" src="backend.svg" alt="backend call graph" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+      <div class="autonote" style="display:none">⚙ This graph is generated in CI (<code>code2flow</code>). Open the deployed <b>GitHub Pages</b> site to see it, or run the workflow in <code>.github/workflows/architecture.yml</code>.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <b>How to read this.</b> Each box is a real file/function; arrows are calls or data flow. Colours group boxes by layer — <b style="color:#2563eb">blue</b> frontend, <b style="color:#7c3aed">violet</b> gateway/routing, <b style="color:#0d9488">teal</b> engine, <b style="color:#b45309">amber</b> providers, <b style="color:#db2777">pink</b> human-in-the-loop, <b style="color:#16a34a">green</b> terminal. Tabs switch between a high-level map, the live request sequence, the engine loop, the frontend flow, the tool registry, and the event contract.<br/>
+  <b>Built with</b> <a href="https://mermaid.js.org" target="_blank" rel="noopener">Mermaid.js</a> — the standard text-to-diagram framework (also powers GitHub &amp; Notion diagrams). Alternatives worth knowing: <code>draw.io</code> / <code>Excalidraw</code> (manual), <code>React Flow</code> &amp; <code>Cytoscape.js</code> (interactive node graphs), <code>D3.js</code> (custom).<br/>
+  <b>View it:</b> open <code>architecture.html</code> in any browser (needs internet to load Mermaid from the CDN).
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad:false, securityLevel:'loose',
+    flowchart:{curve:'basis', useMaxWidth:false},
+    sequence:{useMaxWidth:false, wrap:true, width:165},
+    theme:'base',
+    themeVariables:{
+      fontFamily:"Inter, system-ui, sans-serif", fontSize:'13px',
+      primaryColor:'#eef3f6', primaryBorderColor:'#94a3b8', primaryTextColor:'#15323a',
+      lineColor:'#7c93a3', secondaryColor:'#eef3f6', tertiaryColor:'#f8fafb',
+      clusterBkg:'#f6f9fb', clusterBorder:'#cdd9df', titleColor:'#15323a',
+      edgeLabelBackground:'#ffffff',
+      actorBkg:'#e8f1fd', actorBorder:'#2563eb', actorTextColor:'#11315f', actorLineColor:'#94a3b8',
+      signalColor:'#475569', signalTextColor:'#334155',
+      labelBoxBkgColor:'#f1e9fd', labelBoxBorderColor:'#7c3aed', labelTextColor:'#3b1d6e',
+      loopTextColor:'#0f766e', noteBkgColor:'#fde8f1', noteTextColor:'#6b1840', noteBorderColor:'#db2777'
+    }
+  });
+
+  const zoom = {};
+  const rendered = new Set();
+  const child = (v)=>document.querySelector(`.view[data-v="${v}"] .canvas > *`);
+  function applyZoom(v){ const el=child(v); if(el) el.style.transform=`scale(${zoom[v]||1})`; }
+
+  // Wait for the web font (Inter) before measuring, otherwise Mermaid sizes each
+  // box using the fallback font and the real text overflows the box once Inter loads.
+  const fontsReady = (document.fonts && document.fonts.ready)
+    ? document.fonts.ready.catch(()=>{}) : Promise.resolve();
+
+  // Lazy render: render a diagram only when its tab becomes visible, so Mermaid
+  // can measure it correctly (rendering inside a display:none tab gives 0 size).
+  async function renderView(v){
+    if(rendered.has(v)) return; rendered.add(v);
+    const node=document.querySelector(`.view[data-v="${v}"] .mermaid`);
+    if(!node) return; // auto-svg views have no mermaid to render
+    try{ await fontsReady; await mermaid.run({ nodes:[node] }); }
+    catch(err){ console.error(err); node.innerHTML='<div style="color:#c2185b;font-family:monospace;font-size:12px;padding:14px">⚠ diagram failed to render — see console</div>'; }
+  }
+
+  async function showTab(v){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.v===v));
+    document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.dataset.v===v));
+    await renderView(v);
+  }
+
+  document.getElementById('tabs').addEventListener('click', e=>{ const t=e.target.closest('.tab'); if(t) showTab(t.dataset.v); });
+  document.querySelectorAll('.toolbar').forEach(tb=>{
+    const v=tb.closest('.view').dataset.v;
+    tb.addEventListener('click', e=>{
+      const b=e.target.closest('.zbtn'); if(!b) return;
+      zoom[v] = b.dataset.z==='0' ? 1 : Math.min(2.4, Math.max(.4,(zoom[v]||1)+(b.dataset.z==='+'?.15:-.15)));
+      applyZoom(v);
+    });
+  });
+  window.addEventListener('DOMContentLoaded', async ()=>{
+    await renderView('overview'); // only the visible tab; the rest render on open
+    const l=document.getElementById('loading'); l.classList.add('done'); setTimeout(()=>l.remove(),350);
+  });
+</script>
+</body>
+</html>

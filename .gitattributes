@@ -1,0 +1,13 @@
+# Treat binary fixtures as binary so core.autocrlf never rewrites their bytes
+# (line-ending conversion would corrupt them on checkout / fresh clone).
+*.db binary
+*.sqlite binary
+*.pdf binary
+*.xlsx binary
+*.xls binary
+*.parquet binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

@@ -1,0 +1,16 @@
+emp_id,full_name,department,country,hire_date,salary,years_at_company
+E001, Alice Johnson ,Engineering,usa,2019-04-15,"$92,000",5
+E002,bob smith,marketing,USA,15/03/2020,"$65,500",4
+E003,Carol DAVIES,Engineering,UK,2018-11-02,"£81,000",6
+E004,DAVID lee,Sales,uk,2021-08-19,"$58,000",
+E005,  Emma  Patel  ,engineering,India,2022-01-10,"₹2,400,000",3
+E006,frank obrien,SALES,IRL,2017-06-25,"€72,500",8
+E007,Grace Kim,marketing,KOR,2020/09/14,"$71,000",5
+E008,henry zhang,Engineering,china,2019-12-01,"¥800,000",6
+E009,Isabella ROSSI,sales,Italy,03-02-2021,"€61,000",4
+E010,Jack OConnor,Engineering,Ireland,2018-07-30,"€85,000",7
+E011,kira sato,Engineering,Japan,2020-05-20,"¥9,200,000",5
+E012,Liam Brown,Sales,Canada,2019-09-09,"CAD 74,000",6
+E013,  Maya  Singh,marketing,in,2021-12-12,"₹2,000,000",3
+E014,Noah Tran,engineering,VN,2022-06-01,"₫1,200,000,000",2
+E015,Olga Petrov,Sales,Russia,01/01/2020,"₽3,500,000",5

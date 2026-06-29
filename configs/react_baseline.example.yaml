@@ -1,0 +1,25 @@
+# ReAct single-agent baseline — copy to configs/react_baseline.yaml and fill in
+# your own api_key (real configs/*.yaml are git-ignored so secrets never commit).
+dataset:
+  root_path: data/public/input
+
+agent:
+  model: gpt-4o
+  api_base: https://api.openai.com/v1
+  api_key: sk-REPLACE_ME
+  # api_version: 2024-02-15-preview   # set only for Azure OpenAI endpoints
+  agent_mode: react
+  temperature: 0.0          # keep at 0.0 — the reasoning loop wants determinism
+  max_steps: 16
+
+  # --- output reliability (see agents/model.py) ---
+  force_json: true          # constrain each step to one JSON object; auto-degrades
+                            #   if the endpoint can't do response_format=json_object
+  # seed: 42                # optional: reproducible completions where supported
+  # request_max_tokens: 2048
+
+run:
+  output_dir: artifacts/runs
+  run_id:
+  max_workers: 16
+  task_timeout_seconds: 600

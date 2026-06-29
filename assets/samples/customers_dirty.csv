@@ -1,0 +1,22 @@
+id,full_name,age,country,signup_date,spend,status,notes
+1,Alice Smith,34,USA,2023-01-05,"$1,200",active,VIP
+2, Bob Jones ,,usa,02/14/2023,$95,active,
+3,Carla Diaz,29,Canada,2023/03/01,"$2,400",active,  needs review  
+4,David Lee,41,canada,04/22/2023,$0,active,
+5,Eve Adams,999,USA,2023-05-10,"$1,050",active,outlier age
+6,Frank Wu,38,Usa,06/30/2023,$780,active,
+7,Grace Kim,,Canada,2023-07-15,"$3,300",active,
+8,Henry Ford,52,USA,08/01/2023,$540,active,note
+9,Ivy Chen,27,canada,2023-09-09,"$1,800",active,
+10,Jack Ma,45,USA,10/10/2023,"$6,000",active,
+10,Jack Ma,45,USA,10/10/2023,"$6,000",active,
+11,Karen Poe,,usa,2023-11-11,$210,active,
+12,Liam O'Neil,39,Ireland,12/12/2023,"$1,400",inactive,churn risk
+13,Mia Garcia,31,Mexico,2024-01-05,$880,active,
+14,Noah Kim,28,korea,01/22/2024,"$2,150",active,
+15,  Olivia Park ,,USA,2024-02-14,$320,active,   
+16,Peter Vu,47,vn,2024-03-03,"$4,900",active,VIP
+17,Quinn Tran,33,Vietnam,03/30/2024,"$1,250",inactive,
+18,Ravi Singh,,India,2024-04-10,$680,active,
+19,Sofia Rossi,29,Italy,2024-05-21,"$2,800",active,
+20,Tom Becker,888,Germany,2024-06-01,"$1,100",active,outlier age

@@ -1,0 +1,28 @@
+# DRAGIN (retrieval-augmented reasoning) baseline — copy to configs/dragin_baseline.yaml
+# and fill in your own api_key (real configs/*.yaml are git-ignored).
+dataset:
+  root_path: data/public/input
+
+agent:
+  model: gpt-4o
+  api_base: https://api.openai.com/v1
+  api_key: sk-REPLACE_ME
+  agent_mode: dragin
+  temperature: 0.0
+  max_steps: 30
+
+  # --- output reliability (see agents/model.py) ---
+  force_json: true          # constrain each step to one JSON object; auto-degrades
+  # seed: 42
+  # request_max_tokens: 2048
+
+  # --- DRAGIN retrieval knobs ---
+  dragin_rind_threshold: 0.28   # lower = retrieve more eagerly when info is "needed"
+  dragin_qfs_top_n: 12          # query terms kept for query-from-self retrieval
+  dragin_max_retrievals: 4      # cap on auto-injected retrieval steps per run
+
+run:
+  output_dir: artifacts/runs
+  run_id:
+  max_workers: 18
+  task_timeout_seconds: 1800

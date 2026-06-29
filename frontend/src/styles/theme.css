@@ -1,0 +1,172 @@
+/* =========================================================================
+   Data Agent Studio — THEME TOKENS  ·  brand palette
+   -------------------------------------------------------------------------
+   Single source of truth for the look & feel. Built on the project's
+   design system:
+
+     · PC-2 Dark Purple  #32005A — primary BRAND INK (links, icons, headings,
+                                   deep end of the brand gradient)
+     · PC-1 Turquoise    #50DCE1 — bright ACCENT (CTA fills, brand mark, focus)
+     · SC-1/2/3 grays            — text / neutrals / surfaces / borders
+     · NC functional             — error ORANGE, success green, warn, info blue
+
+   Variable names are kept (`--ds-teal-*`, `--ds-magenta`) so existing
+   components need no edits; only the VALUES change. `--ds-teal-600` now
+   carries the deep PURPLE (strong-ink role), `--ds-teal-400` the turquoise.
+   ========================================================================= */
+:root {
+  /* --- "Ink" ramp — built around SC-1 Anthracite (#1D211C): code panels,
+         dark headers, avatars --- */
+  --ds-petrol-900: #0f100e;
+  --ds-petrol-800: #161914;
+  --ds-petrol-700: #1d211c; /* SC-1 Anthracite */
+  --ds-petrol-600: #2c302a;
+
+  /* --- BRAND ramp. `-600` = PC-2 Dark Purple (strong text/links/icons on
+         white), `-400` = PC-1 Turquoise (bright accent / fills / focus). --- */
+  --ds-teal-600: #32005a; /* PC-2 — strong ink: links, icons, gradient deep end */
+  --ds-teal-500: #2bc4c9; /* darker turquoise — fill base / hover (dark text reads) */
+  --ds-teal-400: #50dce1; /* PC-1 BRAND — accents, brand mark, focus glow, CTA fill */
+  --ds-teal-200: #b9f1f3; /* PC-1-40 */
+  --ds-teal-50:  #dcf8f9; /* PC-1-20 */
+
+  /* --- Legacy "magenta" slots → mapped to the PC-2 purple brand. --- */
+  --ds-magenta: #32005a;      /* PC-2 Dark Purple */
+  --ds-magenta-soft: #d6ccde; /* PC-2-20 */
+  --ds-amber: #faad14;        /* NC-3 Warning Yellow */
+
+  /* Table header — PC-2 purple, white text (stable in both themes; does NOT
+     flip like --ds-teal-600, so white text stays legible on dark mode too). */
+  --ds-table-head: #32005a;     /* PC-2 */
+  --ds-table-head-hover: #5b337b; /* PC-2-80 */
+
+  /* --- Neutrals / surfaces — white-dominant, SC-2/SC-3 grays --- */
+  --ds-bg: #ededed;          /* SC-3-40 Silver Gray — canvas (panels stay white for depth) */
+  --ds-surface: #ffffff;     /* BG-1 White — panels / cards */
+  --ds-surface-2: #f6f6f6;   /* SC-3-20 */
+  --ds-surface-3: #ededed;   /* SC-3-40 */
+  --ds-text: #1d211c;        /* SC-1 Anthracite */
+  --ds-text-soft: #4a4d49;   /* SC-1-80 */
+  --ds-muted: #5c6062;       /* SC-2 Dark Gray */
+  --ds-faint: #9da0a1;       /* SC-2-60 */
+  --ds-border: #e4e4e4;      /* SC-3-60 */
+  --ds-border-strong: #d2d2d2; /* SC-3 Silver Gray */
+
+  /* --- Status — functional colors (error is ORANGE, not red). The neon
+         NC-2 green (#00FF6E) is darkened to #00b050 so it stays legible as
+         text/icons on white; its 20% tint is the canonical bg. --- */
+  --ds-success: #00b050;     /* NC-2 Success Green (text-safe) */
+  --ds-success-bg: #e6fff1;  /* NC-2-20 */
+  --ds-error: #ff5a00;       /* NC-1 Error Orange */
+  --ds-error-bg: #ffdecc;    /* NC-1-20 */
+  --ds-warn: #faad14;        /* NC-3 Warning Yellow */
+  --ds-warn-bg: #feefd0;     /* NC-3-20 */
+  --ds-info: #0000a5;        /* NC-4 Info Blue */
+  --ds-info-bg: #cccced;     /* NC-4-20 */
+
+  /* --- Trace step colors — turquoise (thought) + purple (action/observe) --- */
+  --ds-thought: #2bc4c9;     /* turquoise */
+  --ds-thought-bg: #dcf8f9;  /* PC-1-20 */
+  --ds-action: #32005a;      /* PC-2 purple */
+  --ds-action-bg: #ede9f2;   /* light purple tint */
+  --ds-observe: #5b337b;     /* PC-2-80 — lighter purple, distinct from action */
+  --ds-observe-bg: #ede9f2;
+  --ds-answer: #1d211c;      /* anthracite */
+  --ds-answer-bg: #ededed;
+
+  /* --- Typography — Inter throughout (H/Lead Light, body Regular,
+         headings Bold/Extra Bold, captions Semi Bold, +0.5/+1 tracking). --- */
+  --ds-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ds-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  /* Weights: Hero/H1 Extra Bold, H2–H6 Bold, Caption Semi Bold,
+     body Regular, Lead Light. */
+  --ds-fw-light: 300;
+  --ds-fw-regular: 400;
+  --ds-fw-semibold: 600;
+  --ds-fw-bold: 700;
+  --ds-fw-extrabold: 800;
+
+  /* --- Radius / shadow / layout --- */
+  --ds-r-sm: 6px;
+  --ds-r: 10px;
+  --ds-r-lg: 16px;
+  --ds-shadow-sm: 0 1px 2px rgba(29, 33, 28, 0.05), 0 1px 3px rgba(29, 33, 28, 0.06);
+  --ds-shadow: 0 4px 16px rgba(29, 33, 28, 0.07);
+  --ds-shadow-lg: 0 18px 50px rgba(50, 0, 90, 0.16);
+  --ds-topbar-h: 56px;
+}
+
+/* =========================================================================
+   DARK MODE — black surfaces (BG-2), white text. On black the PC-2 purple is
+   too dark to read, so the BRAND role flips to PC-1 Turquoise for links/icons;
+   purple returns as a light accent (PC-2-40). Functional colors use lighter
+   ramp steps for contrast; the neon success green shines as-is.
+   ========================================================================= */
+[data-theme='dark'] {
+  --ds-bg: #000000;          /* BG-2 Black */
+  --ds-surface: #0c0d0c;
+  --ds-surface-2: #161816;
+  --ds-surface-3: #232623;
+  --ds-text: #ffffff;
+  --ds-text-soft: #e4e4e4;
+  --ds-muted: #9da0a1;       /* SC-2-60 */
+  --ds-faint: #5c6062;       /* SC-2 */
+  --ds-border: #343834;        /* lifted off the near-black surface so dividers read */
+  --ds-border-strong: #4d524d;
+
+  /* Brand pops on black — turquoise leads (readable), purple too dark for ink. */
+  --ds-teal-600: #50dce1;    /* PC-1 — links/icons readable on black */
+  --ds-teal-500: #2bc4c9;
+  --ds-teal-400: #50dce1;
+  --ds-teal-200: #b9f1f3;
+  --ds-teal-50:  #0e2e30;    /* deep turquoise bg */
+
+  --ds-magenta: #ad99bd;     /* PC-2-40 — light purple pop on black */
+  --ds-magenta-soft: #1a0a2e;
+
+  --ds-success: #00ff6e;     /* NC-2 neon reads great on black */
+  --ds-success-bg: #06251a;
+  --ds-error: #ff7b33;       /* NC-1-80 */
+  --ds-error-bg: #2e1407;
+  --ds-warn: #fbbd43;        /* NC-3-80 */
+  --ds-warn-bg: #2e2410;
+  --ds-info: #6666c9;        /* NC-4-60 */
+  --ds-info-bg: #14143f;
+
+  --ds-thought: #50dce1;     /* turquoise */
+  --ds-thought-bg: #0e2e30;
+  --ds-action: #ad99bd;      /* light purple */
+  --ds-action-bg: #1a0a2e;
+  --ds-observe: #73e3e7;     /* PC-1-80 */
+  --ds-observe-bg: #0e2e30;
+  --ds-answer-bg: #161816;
+  --ds-answer: #ffffff;
+
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --ds-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+  --ds-shadow-lg: 0 20px 55px rgba(0, 0, 0, 0.8);
+
+  /* Component-scoped fixes for dark mode.
+     The brand teal is remapped to a *light* tone for dark backgrounds, but a few
+     places (mode toggle's active pill, ER node header) historically assumed
+     white-on-teal-600 readability. Override those so the text stays legible.   */
+  --ds-active-ink: var(--ds-text);
+}
+[data-theme='dark'] .mode-opt.active { color: var(--ds-active-ink); background: var(--ds-surface-3); }
+[data-theme='dark'] .mode-opt.active.copilot { color: var(--ds-teal-400); }
+[data-theme='dark'] .ern-head { color: #0a0a0a; }
+[data-theme='dark'] .ern-src { background: rgba(10, 10, 10, 0.18); color: #0a0a0a; }
+[data-theme='dark'] .bubble.user { background: var(--ds-teal-400); color: #0a0a0a; }
+[data-theme='dark'] .answer-table.sortable th:hover { background: var(--ds-table-head-hover); }
+/* ER node bodies use hardcoded LIGHT pastel fills regardless of theme, so the
+   text and badges INSIDE them must stay dark in dark mode — otherwise the
+   default --ds-text-soft (white in dark) would be invisible on the light fill. */
+[data-theme='dark'] .er-node { color: #0a0a0a; }
+[data-theme='dark'] .er-node .ern-col { color: #1a1a1a; }
+[data-theme='dark'] .er-node .ern-col-type,
+[data-theme='dark'] .er-node .ern-rows,
+[data-theme='dark'] .er-node .ern-col.more { color: #5b6263; }
+[data-theme='dark'] .er-node .ern-col.pk { color: #b45309; }
+[data-theme='dark'] .er-node .ern-col.fk { color: #0e7c7b; }
+[data-theme='dark'] .er-node .key-badge.pk { background: #fde2bd; color: #92400e; }
+[data-theme='dark'] .er-node .key-badge.fk { background: #cdeded; color: #0e7c7b; }

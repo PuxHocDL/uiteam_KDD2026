@@ -1,0 +1,93 @@
+name: Architecture site
+
+# Regenerates the architecture diagrams FROM THE SOURCE on every push and
+# publishes them to GitHub Pages. The frontend graph and the backend call-graph
+# are derived from the real code, so they stay in sync automatically.
+#
+# One-time setup: repo Settings → Pages → Build and deployment → Source:
+# "GitHub Actions". The site then lives at
+# https://<user>.github.io/<repo>/
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'frontend/src/**'
+      - 'architecture.html'
+      - '.github/workflows/architecture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages (enables it if needed)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Install diagram generators
+        run: |
+          npm install -g madge
+          pip install code2flow
+
+      - name: Generate diagrams from source
+        run: |
+          mkdir -p _site
+          cp architecture.html _site/index.html
+
+          echo "→ Frontend module graph (madge over frontend/src)"
+          # madge auto-loads .madgerc from the repo root (white bg + multi-colour nodes);
+          # there is no --config flag, passing one makes madge error out.
+          madge --extensions js,jsx --image _site/frontend.svg frontend/src/main.jsx \
+            || echo "::warning::madge failed; frontend.svg not generated"
+
+          echo "→ Backend call-graph (code2flow over the live engine path)"
+          code2flow \
+            src/data_agent_baseline/agents/react.py \
+            src/data_agent_baseline/run/runner.py \
+            src/data_agent_baseline/tools/registry.py \
+            src/data_agent_baseline/agents/model.py \
+            server/app.py \
+            -o _site/backend.svg \
+            || echo "::warning::code2flow failed; backend.svg not generated"
+
+          echo "Generated site:" && ls -la _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

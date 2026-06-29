@@ -1,0 +1,32 @@
+# Hybrid-B router baseline — routes by difficulty/signals across react + dragin.
+# Copy to configs/hybrid_b.yaml and fill in your own api_key (real configs/*.yaml
+# are git-ignored so secrets never commit).
+dataset:
+  root_path: data/public/input
+
+agent:
+  model: gpt-4o
+  api_base: https://api.openai.com/v1
+  api_key: sk-REPLACE_ME
+  agent_mode: hybrid_b
+  temperature: 0.0          # reasoning is steadier at 0.0; raise only for answer diversity
+  max_steps: 18
+
+  # --- output reliability (see agents/model.py) ---
+  force_json: true          # constrain each step to one JSON object; auto-degrades
+                            #   if the endpoint can't do response_format=json_object
+  # seed: 42
+  # request_max_tokens: 2048
+
+  # --- DRAGIN retrieval knobs (used when the router picks dragin) ---
+  dragin_rind_threshold: 0.28
+  dragin_qfs_top_n: 12
+  dragin_max_retrievals: 4
+  hybrid_hard_min_signals: 2   # how many "hard" signals before a hard task goes to dragin
+
+run:
+  output_dir: artifacts/runs
+  run_id:
+  max_workers: 24
+  task_timeout_seconds: 1800
+  difficulties:               # one of [easy], [medium], [hard], [extreme]; blank = all

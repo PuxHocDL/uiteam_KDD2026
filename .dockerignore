@@ -1,0 +1,26 @@
+# Build context = original/ (cloned repo root)
+.git
+.gitignore
+.github
+**/__pycache__
+**/*.pyc
+.venv
+venv
+.pytest_cache
+.ruff_cache
+*.egg-info
+build
+dist
+
+# Cloned repo's local artifacts (just in case)
+artifacts/
+data/
+docs/
+configs/
+
+# Don't pull a previously built archive back in
+image code/team*.tar.gz
+
+.DS_Store
+Thumbs.db
+*.log

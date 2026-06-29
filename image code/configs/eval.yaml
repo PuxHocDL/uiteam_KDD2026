@@ -1,0 +1,15 @@
+dataset:
+  root_path: /input
+
+agent:
+  model: qwen3.5-35b-a3b
+  api_base: http://placeholder/v1
+  api_key: ""
+  agent_mode: single
+  temperature: 0.0
+  max_steps: 30
+
+run:
+  output_dir: /output
+  max_workers: 16
+  task_timeout_seconds: 600

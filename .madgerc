@@ -1,0 +1,10 @@
+{
+  "fontName": "Inter, Arial, sans-serif",
+  "fontSize": "13px",
+  "backgroundColor": "#ffffff",
+  "nodeColor": "#2563eb",
+  "noDependencyColor": "#0d9488",
+  "cyclicNodeColor": "#db2777",
+  "edgeColor": "#94a3b8",
+  "nodeShape": "box"
+}
