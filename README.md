@@ -219,7 +219,10 @@ panel and the agent's prompt.
   a λ-penalty for extra columns); `run-consensus` does self-consistency voting across runs.
 - **Sample data** — `assets/samples/` ships dirty CSVs, multi-sheet-style tables, linked SQLite DBs
   (`crm.db` ↔ `billing.db`), and PDFs to exercise Data Doctor, Explore, and the Knowledge Graph.
-- **Container** — `image code/Dockerfile` builds a runnable image of the engine.
+- **Container** — `Dockerfile` builds one image that runs the Studio by default and doubles as the
+  verification surface: `docker run <image> pytest -q` (test suite, no external data/keys needed) or
+  `docker run <image> dabench run-benchmark --config ...` (benchmark, dataset/config mounted as
+  volumes). See `docs/DOCKER_REPRODUCE.md` for the full walkthrough.
 - **Diagrams** — `architecture.html` (auto-generated from source via CI) renders the live module and
   call graphs.
 
@@ -270,7 +273,7 @@ src/data_agent_baseline/
 configs/                       example configs (real ones git-ignored)
 tests/                         pytest suite
 assets/samples/                sample datasets for the demos
-image code/Dockerfile          containerized engine
+Dockerfile                     Studio image; also runs pytest / dabench for verification
 ```
 
 ## 13. Tech stack & disclosure

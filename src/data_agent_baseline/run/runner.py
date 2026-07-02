@@ -15,7 +15,13 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from data_agent_baseline.agents.model import AzureOpenAIModelAdapter, ModelMessage, OpenAIModelAdapter
+from data_agent_baseline.agents.model import (
+    AzureOpenAIModelAdapter,
+    ModelMessage,
+    OpenAIModelAdapter,
+    UsageTotals,
+    estimate_cost_usd,
+)
 from data_agent_baseline.agents.parsing import extract_json_object
 from data_agent_baseline.agents.memory import AgentMemoryStore, memory_root_for_run_output
 from data_agent_baseline.agents.orchestrator import MultiAgentConfig, MultiAgentOrchestrator
@@ -275,6 +281,30 @@ def _run_dragin_agent(
     return agent.run(task)
 
 
+def _usage_snapshot_of(model: Any) -> UsageTotals | None:
+    """Best-effort usage snapshot; returns None for adapters that don't track
+    usage (e.g. ScriptedModelAdapter used in tests)."""
+    snapshot_fn = getattr(model, "usage_snapshot", None)
+    if snapshot_fn is None:
+        return None
+    return snapshot_fn()
+
+
+def _token_usage_payload(model: Any, before: UsageTotals | None) -> dict[str, Any] | None:
+    after = _usage_snapshot_of(model)
+    if after is None or before is None:
+        return None
+    delta = after.diff(before)
+    model_name = getattr(model, "model", "")
+    return {
+        **delta.to_dict(),
+        "model": model_name,
+        "estimated_cost_usd": estimate_cost_usd(
+            model_name, delta.prompt_tokens, delta.completion_tokens
+        ),
+    }
+
+
 def _run_single_task_core(
     *,
     task_id: str,
@@ -288,6 +318,7 @@ def _run_single_task_core(
     effective_tools = tools or create_default_tool_registry()
     routing = _select_agent_routing(task, config)
     effective_model = model or build_model_adapter(config)
+    usage_before = _usage_snapshot_of(effective_model)
 
     if routing.agent_mode == "multi":
         orchestrator = MultiAgentOrchestrator(
@@ -324,6 +355,9 @@ def _run_single_task_core(
         "reason": routing.reason,
         "signals": list(routing.signals),
     }
+    token_usage = _token_usage_payload(effective_model, usage_before)
+    if token_usage is not None:
+        payload["token_usage"] = token_usage
     return payload
 
 

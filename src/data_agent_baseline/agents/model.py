@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -15,6 +16,76 @@ from openai import (
 )
 
 logger = logging.getLogger(__name__)
+
+# USD per 1M tokens, (prompt_price, completion_price). Approximate public list
+# prices — Azure billing may differ slightly by region/contract, so treat any
+# derived cost as an estimate, not an invoice-accurate figure.
+MODEL_PRICING_PER_1M_TOKENS: dict[str, tuple[float, float]] = {
+    "gpt-4o": (2.50, 10.00),
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4.1": (2.00, 8.00),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1-nano": (0.10, 0.40),
+    "gpt-4-turbo": (10.00, 30.00),
+    "gpt-4": (30.00, 60.00),
+    "gpt-3.5-turbo": (0.50, 1.50),
+}
+
+
+def estimate_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
+    """Return an estimated USD cost for the given token counts, or None if the
+    model isn't in the pricing table (unknown/local/self-hosted endpoints)."""
+    pricing = MODEL_PRICING_PER_1M_TOKENS.get(model)
+    if pricing is None:
+        return None
+    prompt_price, completion_price = pricing
+    return (prompt_tokens / 1_000_000) * prompt_price + (completion_tokens / 1_000_000) * completion_price
+
+
+@dataclass
+class UsageTotals:
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "calls": self.calls,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+        }
+
+    def diff(self, earlier: "UsageTotals") -> "UsageTotals":
+        return UsageTotals(
+            calls=self.calls - earlier.calls,
+            prompt_tokens=self.prompt_tokens - earlier.prompt_tokens,
+            completion_tokens=self.completion_tokens - earlier.completion_tokens,
+            total_tokens=self.total_tokens - earlier.total_tokens,
+        )
+
+
+class _UsageTrackerMixin:
+    """Thread-safe accumulator for token usage, shared by both adapters."""
+
+    def _init_usage_tracking(self) -> None:
+        self._usage_lock = threading.Lock()
+        self._usage_totals = UsageTotals()
+
+    def _record_usage(self, response: Any) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        with self._usage_lock:
+            self._usage_totals.calls += 1
+            self._usage_totals.prompt_tokens += getattr(usage, "prompt_tokens", 0) or 0
+            self._usage_totals.completion_tokens += getattr(usage, "completion_tokens", 0) or 0
+            self._usage_totals.total_tokens += getattr(usage, "total_tokens", 0) or 0
+
+    def usage_snapshot(self) -> UsageTotals:
+        with self._usage_lock:
+            return UsageTotals(**self._usage_totals.to_dict())
 
 _MAX_RETRIES = 4
 _INITIAL_BACKOFF = 1.5  # seconds
@@ -106,7 +177,7 @@ def _looks_like_json_mode_rejection(exc: BadRequestError) -> bool:
     return "response_format" in text or "json_object" in text or "json mode" in text
 
 
-class OpenAIModelAdapter:
+class OpenAIModelAdapter(_UsageTrackerMixin):
     def __init__(
         self,
         *,
@@ -129,6 +200,7 @@ class OpenAIModelAdapter:
         self.max_tokens = max_tokens
         self._json_object_ok = json_mode
         self._client: OpenAI | None = None
+        self._init_usage_tracking()
 
     def _get_client(self) -> OpenAI:
         if not self.api_key:
@@ -170,12 +242,13 @@ class OpenAIModelAdapter:
                     response = client.chat.completions.create(**kwargs)
                 else:
                     raise
+            self._record_usage(response)
             return _extract_content(response)
 
         return _call_with_retry(_call)
 
 
-class AzureOpenAIModelAdapter:
+class AzureOpenAIModelAdapter(_UsageTrackerMixin):
     def __init__(
         self,
         *,
@@ -198,6 +271,7 @@ class AzureOpenAIModelAdapter:
         self.max_tokens = max_tokens
         self._json_object_ok = json_mode
         self._client: AzureOpenAI | None = None
+        self._init_usage_tracking()
 
     def _get_client(self) -> AzureOpenAI:
         if not self.api_key:
@@ -239,6 +313,7 @@ class AzureOpenAIModelAdapter:
                     response = client.chat.completions.create(**kwargs)
                 else:
                     raise
+            self._record_usage(response)
             return _extract_content(response)
 
         return _call_with_retry(_call)

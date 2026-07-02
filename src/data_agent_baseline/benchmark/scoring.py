@@ -27,6 +27,11 @@ class TaskScore:
     e2e_elapsed_seconds: float | None = None
     num_steps: int | None = None
     run_error: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    estimated_cost_usd: float | None = None
+    model_name: str | None = None
 
 def _normalize(val: str) -> str:
     if val is None:
@@ -216,6 +221,13 @@ def score_run(
                     steps = trace_data.get("steps")
                     ts.num_steps = len(steps) if isinstance(steps, list) else None
                     ts.run_error = trace_data.get("failure_reason")
+                    token_usage = trace_data.get("token_usage")
+                    if isinstance(token_usage, dict):
+                        ts.prompt_tokens = token_usage.get("prompt_tokens")
+                        ts.completion_tokens = token_usage.get("completion_tokens")
+                        ts.total_tokens = token_usage.get("total_tokens")
+                        ts.estimated_cost_usd = token_usage.get("estimated_cost_usd")
+                        ts.model_name = token_usage.get("model")
             except Exception:
                 pass
                 

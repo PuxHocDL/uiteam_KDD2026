@@ -16,7 +16,12 @@ dist
 artifacts/
 data/
 docs/
-configs/
+
+# configs/: only *.example.yaml (no secrets) is COPYed by the Dockerfile via
+# an explicit glob. Still exclude any real, non-example config from the build
+# context entirely, in case one exists locally with a live API key in it.
+configs/*.yaml
+!configs/*.example.yaml
 
 # Don't pull a previously built archive back in
 image code/team*.tar.gz
@@ -24,3 +29,10 @@ image code/team*.tar.gz
 .DS_Store
 Thumbs.db
 *.log
+
+# Creative Track studio image (root Dockerfile) — don't ship stale local
+# frontend build artifacts into the build context; the frontend-builder
+# stage runs its own `npm ci && npm run build`.
+frontend/node_modules
+frontend/dist
+

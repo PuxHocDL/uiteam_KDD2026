@@ -87,6 +87,45 @@ def _optional_int(raw_value: object, default_value: int | None) -> int | None:
     return int(raw_value)
 
 
+# Two accepted spellings per credential, checked in this order: an explicit
+# CLI flag, then the process env under either name. The AZURE_OPENAI_* names
+# match the standard Azure SDK convention (so `docker run -e
+# AZURE_OPENAI_API_KEY=...` works with zero renaming); DABENCH_* is the
+# provider-agnostic fallback for non-Azure OpenAI-compatible endpoints.
+_MODEL_ENV_KEYS = ("DABENCH_MODEL", "AZURE_OPENAI_DEPLOYMENT")
+_API_BASE_ENV_KEYS = ("DABENCH_API_BASE", "AZURE_OPENAI_ENDPOINT")
+_API_KEY_ENV_KEYS = ("DABENCH_API_KEY", "AZURE_OPENAI_API_KEY")
+_API_VERSION_ENV_KEYS = ("DABENCH_API_VERSION", "AZURE_OPENAI_API_VERSION")
+
+
+def _resolve_credential(
+    cli_value: str | None,
+    env_keys: tuple[str, ...],
+    yaml_value: str,
+) -> str:
+    """Precedence: explicit CLI flag > process env (DABENCH_*/AZURE_OPENAI_*) > YAML config."""
+    if cli_value:
+        return cli_value
+    for key in env_keys:
+        if os.environ.get(key):
+            return os.environ[key]
+    return yaml_value
+
+
+@dataclass(frozen=True, slots=True)
+class CredentialOverrides:
+    """Optional overrides for agent.{model,api_base,api_key,api_version},
+    layered on top of whatever the YAML config file has. Lets `dabench` run
+    with a config that has no secret baked in — pass credentials via
+    `--model`/`--api-base`/`--api-key`/`--api-version` flags, or process env
+    vars (DABENCH_* or AZURE_OPENAI_*) instead."""
+
+    model: str | None = None
+    api_base: str | None = None
+    api_key: str | None = None
+    api_version: str | None = None
+
+
 def _normalize_difficulties(raw_value: object) -> tuple[str, ...]:
     if raw_value is None:
         return ()
@@ -114,7 +153,11 @@ def _normalize_difficulties(raw_value: object) -> tuple[str, ...]:
     return tuple(normalized)
 
 
-def load_app_config(config_path: Path) -> AppConfig:
+def load_app_config(
+    config_path: Path,
+    *,
+    credentials: CredentialOverrides | None = None,
+) -> AppConfig:
     payload = yaml.safe_load(config_path.read_text()) or {}
     dataset_defaults = DatasetConfig()
     agent_defaults = AgentConfig()
@@ -127,11 +170,31 @@ def load_app_config(config_path: Path) -> AppConfig:
     dataset_config = DatasetConfig(
         root_path=_path_value(dataset_payload.get("root_path"), dataset_defaults.root_path),
     )
+
+    credentials = credentials or CredentialOverrides()
+
+    resolved_model = _resolve_credential(
+        credentials.model, _MODEL_ENV_KEYS,
+        str(agent_payload.get("model", agent_defaults.model)),
+    )
+    resolved_api_base = _resolve_credential(
+        credentials.api_base, _API_BASE_ENV_KEYS,
+        str(agent_payload.get("api_base", agent_defaults.api_base)),
+    )
+    resolved_api_key = _resolve_credential(
+        credentials.api_key, _API_KEY_ENV_KEYS,
+        str(agent_payload.get("api_key", agent_defaults.api_key)),
+    )
+    resolved_api_version = _resolve_credential(
+        credentials.api_version, _API_VERSION_ENV_KEYS,
+        str(agent_payload.get("api_version", agent_defaults.api_version)),
+    )
+
     agent_config = AgentConfig(
-        model=str(agent_payload.get("model", agent_defaults.model)),
-        api_base=str(agent_payload.get("api_base", agent_defaults.api_base)),
-        api_key=str(agent_payload.get("api_key", agent_defaults.api_key)),
-        api_version=str(agent_payload.get("api_version", agent_defaults.api_version)),
+        model=resolved_model,
+        api_base=resolved_api_base,
+        api_key=resolved_api_key,
+        api_version=resolved_api_version,
         agent_mode=str(agent_payload.get("agent_mode", agent_defaults.agent_mode)).lower(),
         max_steps=int(agent_payload.get("max_steps", agent_defaults.max_steps)),
         temperature=float(agent_payload.get("temperature", agent_defaults.temperature)),

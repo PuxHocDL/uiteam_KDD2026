@@ -15,8 +15,8 @@ from rich.progress import (
 from rich.table import Table
 
 from data_agent_baseline.benchmark.dataset import DABenchPublicDataset
-from data_agent_baseline.benchmark.scoring import score_run
-from data_agent_baseline.config import load_app_config, setup_eval_logging
+from data_agent_baseline.benchmark.scoring import TaskScore, score_run
+from data_agent_baseline.config import CredentialOverrides, load_app_config, setup_eval_logging
 from data_agent_baseline.run.runner import (
     TaskRunArtifacts,
     _configured_tasks,
@@ -28,6 +28,36 @@ from data_agent_baseline.run.runner import (
 from data_agent_baseline.tools.filesystem import list_context_tree
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# Shared credential-override options for the commands that call the model
+# (run-task, run-benchmark, run-consensus). Lets a config.yaml ship with no
+# secret baked in — pass individual flags instead. Precedence: CLI flag >
+# process env (DABENCH_*/AZURE_OPENAI_*, e.g. Docker `-e`/`--env-file`) > YAML.
+_MODEL_OPTION = typer.Option(None, "--model", help="Override agent.model (e.g. gpt-4o-mini).")
+_API_BASE_OPTION = typer.Option(None, "--api-base", help="Override agent.api_base / azure endpoint.")
+_API_KEY_OPTION = typer.Option(None, "--api-key", help="Override agent.api_key.")
+_API_VERSION_OPTION = typer.Option(None, "--api-version", help="Override agent.api_version (Azure only).")
+
+
+def _load_config_with_credentials(
+    config: Path,
+    *,
+    model: str | None,
+    api_base: str | None,
+    api_key: str | None,
+    api_version: str | None,
+):
+    return load_app_config(
+        config,
+        credentials=CredentialOverrides(
+            model=model,
+            api_base=api_base,
+            api_key=api_key,
+            api_version=api_version,
+        ),
+    )
+
+
 CONFIGS_DIR = PROJECT_ROOT / "configs"
 DATA_DIR = PROJECT_ROOT / "data"
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
@@ -143,9 +173,15 @@ def inspect_task(
 def run_task_command(
     task_id: str,
     config: Path = typer.Option(..., exists=True, dir_okay=False, help="YAML config path."),
+    model: str | None = _MODEL_OPTION,
+    api_base: str | None = _API_BASE_OPTION,
+    api_key: str | None = _API_KEY_OPTION,
+    api_version: str | None = _API_VERSION_OPTION,
 ) -> None:
     """Run the configured agent on one task."""
-    app_config = load_app_config(config)
+    app_config = _load_config_with_credentials(
+        config, model=model, api_base=api_base, api_key=api_key, api_version=api_version
+    )
     if app_config.run.eval_mode:
         run_output_dir = app_config.run.output_dir
         run_output_dir.mkdir(parents=True, exist_ok=True)
@@ -175,9 +211,15 @@ def run_benchmark_command(
         "--official-only",
         help="Run only official organizer tasks (task_<number> without variant suffixes like _e, _x, _h, _m).",
     ),
+    model: str | None = _MODEL_OPTION,
+    api_base: str | None = _API_BASE_OPTION,
+    api_key: str | None = _API_KEY_OPTION,
+    api_version: str | None = _API_VERSION_OPTION,
 ) -> None:
     """Run the configured agent on multiple tasks from the config selection."""
-    app_config = load_app_config(config)
+    app_config = _load_config_with_credentials(
+        config, model=model, api_base=api_base, api_key=api_key, api_version=api_version
+    )
     dataset = DABenchPublicDataset(app_config.dataset.root_path)
     task_total = len(_configured_tasks(dataset, app_config))
     if official_only:
@@ -296,9 +338,15 @@ def run_consensus_command(
         "--official-only",
         help="Run only official organizer tasks (task_<number> without variant suffixes).",
     ),
+    model: str | None = _MODEL_OPTION,
+    api_base: str | None = _API_BASE_OPTION,
+    api_key: str | None = _API_KEY_OPTION,
+    api_version: str | None = _API_VERSION_OPTION,
 ) -> None:
     """Run benchmark multiple times and merge the best consensus candidates."""
-    app_config = load_app_config(config)
+    app_config = _load_config_with_credentials(
+        config, model=model, api_base=api_base, api_key=api_key, api_version=api_version
+    )
     dataset = DABenchPublicDataset(app_config.dataset.root_path)
     all_tasks = _configured_tasks(dataset, app_config)
     if official_only:
@@ -441,6 +489,8 @@ def eval_command(
     table.add_column("Gold R×C", justify="right")
     table.add_column("Pred R×C", justify="right")
     table.add_column("Matched", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Cost($)", justify="right")
     table.add_column("Note")
 
     def _task_sort_key(r):
@@ -464,6 +514,9 @@ def eval_command(
             notes.append(r.run_error)
         note_str = " | ".join(notes)
 
+        tokens_str = f"{r.total_tokens}" if r.total_tokens is not None else "-"
+        cost_str = f"{r.estimated_cost_usd:.5f}" if r.estimated_cost_usd is not None else "-"
+
         table.add_row(
             r.task_id,
             f"[{diff_style}]{diff_label}[/{diff_style}]",
@@ -474,6 +527,8 @@ def eval_command(
             f"{r.gold_rows}×{r.gold_cols}",
             f"{r.pred_rows}×{r.pred_cols}",
             str(r.matched_cols),
+            tokens_str,
+            cost_str,
             note_str,
         )
 
@@ -486,11 +541,18 @@ def eval_command(
     console.print(f"Average score:  [bold]{avg:.4f}[/bold]")
     console.print(f"Perfect (1.0):  {perfect}/{len(results)}")
 
+    costs = [r.estimated_cost_usd for r in results if r.estimated_cost_usd is not None]
+    tokens = [r.total_tokens for r in results if r.total_tokens is not None]
+    if costs:
+        console.print(f"Total cost:     [bold]${sum(costs):.5f}[/bold]  (avg ${sum(costs)/len(costs):.5f}/task)")
+    if tokens:
+        console.print(f"Total tokens:   [bold]{sum(tokens)}[/bold]  (avg {sum(tokens)/len(tokens):.0f}/task)")
+
     # Per-difficulty breakdown
-    diff_groups: dict[str, list[float]] = {}
+    diff_groups: dict[str, list[TaskScore]] = {}
     for r in results:
         key = r.difficulty or "unknown"
-        diff_groups.setdefault(key, []).append(r.score)
+        diff_groups.setdefault(key, []).append(r)
 
     if len(diff_groups) > 1 or "" not in diff_groups:
         diff_table = Table(title="Score by Difficulty")
@@ -499,20 +561,35 @@ def eval_command(
         diff_table.add_column("Avg Score", justify="right")
         diff_table.add_column("Perfect", justify="right")
         diff_table.add_column("Zero", justify="right")
+        diff_table.add_column("Avg Time(s)", justify="right")
+        diff_table.add_column("Avg Tokens", justify="right")
+        diff_table.add_column("Avg Cost($)", justify="right")
 
         for diff in sorted(diff_groups, key=lambda d: DIFFICULTY_ORDER.get(d, 99)):
-            s = diff_groups[diff]
+            group = diff_groups[diff]
+            s = [r.score for r in group]
             d_avg = sum(s) / len(s)
             d_perfect = sum(1 for x in s if x >= 1.0)
             d_zero = sum(1 for x in s if x == 0.0)
             style = DIFFICULTY_STYLES.get(diff, "dim")
             score_style = "green" if d_avg >= 0.7 else ("yellow" if d_avg >= 0.4 else "red")
+
+            times = [r.e2e_elapsed_seconds for r in group if r.e2e_elapsed_seconds is not None]
+            d_tokens = [r.total_tokens for r in group if r.total_tokens is not None]
+            d_costs = [r.estimated_cost_usd for r in group if r.estimated_cost_usd is not None]
+            avg_time_str = f"{sum(times)/len(times):.1f}" if times else "-"
+            avg_tokens_str = f"{sum(d_tokens)/len(d_tokens):.0f}" if d_tokens else "-"
+            avg_cost_str = f"{sum(d_costs)/len(d_costs):.5f}" if d_costs else "-"
+
             diff_table.add_row(
                 f"[{style}]{diff.upper()}[/{style}]",
                 str(len(s)),
                 f"[{score_style}]{d_avg:.4f}[/{score_style}]",
                 f"{d_perfect}/{len(s)}",
                 f"{d_zero}/{len(s)}",
+                avg_time_str,
+                avg_tokens_str,
+                avg_cost_str,
             )
 
         console.print(diff_table)
